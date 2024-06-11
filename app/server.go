@@ -36,7 +36,7 @@ func userAgentHandler(res http.ResponseWriter, req http.Request) {
 func fileHandler(res http.ResponseWriter, req http.Request) {
 	filename := req.Params[0]
 
-	bytes, err := os.ReadFile("tmp/" + filename + ".txt")
+	bytes, err := os.ReadFile(filename + ".txt")
 	if err != nil {
 		fmt.Println("Error reading file:", err)
 		res.WriteHeader(404)
