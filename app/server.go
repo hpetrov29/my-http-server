@@ -33,11 +33,36 @@ func userAgentHandler(res http.ResponseWriter, req http.Request) {
     }
 }
 
+func fileHandler(res http.ResponseWriter, req http.Request) {
+	filename := req.Params[0]
+
+	bytes, err := os.ReadFile("tmp/" + filename + ".txt")
+	if err != nil {
+		fmt.Println("Error reading file:", err)
+		res.WriteHeader(404)
+		return
+	}
+
+	resBody := string(bytes)
+
+	res.Header().Add("Content-Type", "application/octet-stream")
+	res.Header().Add("Content-Length", fmt.Sprintf("%d", len(resBody)))
+
+	res.WriteHeader(200)
+
+	_, err = res.Write(bytes)
+	if err != nil {
+        fmt.Println("Error writing response: ", err.Error())
+		return
+    }
+}
+
 func main() {
 		r := http.NewRouter()
 		r.Handle("/", homeHandler)
 		r.Handle("/echo/:param", echoHandler)
 		r.Handle("/user-agent", userAgentHandler)
+		r.Handle("/files/:filename", fileHandler)
 
 		l, err := net.Listen("tcp", "0.0.0.0:4221")
 		if err != nil {
