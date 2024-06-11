@@ -88,7 +88,7 @@ func homeHandler(conn net.Conn, params []string) {
 }
 
 func echoHandler(conn net.Conn, params []string) {
-	response := fmt.Sprintf("HTTP/1.1 200 OK\r\n\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(params[0]), params[0])
+	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(params[0]), params[0])
 	_, err := conn.Write([]byte(response))
     if err != nil {
         fmt.Println("Error writing response: ", err.Error())
