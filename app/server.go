@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -36,10 +35,8 @@ func userAgentHandler(res http.ResponseWriter, req http.Request) {
 
 func fileHandler(res http.ResponseWriter, req http.Request) {
 	filename := req.Params[0]
-	directory := flag.String("directory", "", "Directory path")
-	flag.Parse()
 
-	bytes, err := os.ReadFile(*directory + filename)
+	bytes, err := os.ReadFile("/tmp/data/codecrafters.io/http-server-tester/" + filename)
 	if err != nil {
 		fmt.Println("Error reading file:", err)
 		res.WriteHeader(404)
