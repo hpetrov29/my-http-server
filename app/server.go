@@ -36,7 +36,7 @@ func userAgentHandler(res http.ResponseWriter, req http.Request) {
 func fileHandler(res http.ResponseWriter, req http.Request) {
 	filename := req.Params[0]
 
-	bytes, err := os.ReadFile("/tmp/data/codecrafters.io/http-server-tester/" + filename)
+	bytes, err := os.ReadFile("/tmp/" + filename)
 	if err != nil {
 		fmt.Println("Error reading file:", err)
 		res.WriteHeader(404)
@@ -57,12 +57,18 @@ func fileHandler(res http.ResponseWriter, req http.Request) {
     }
 }
 
+func fileHandlerPost(res http.ResponseWriter, req http.Request) {
+	res.WriteHeader(200)
+}
+
 func main() {
 		r := http.NewRouter()
-		r.Handle("/", homeHandler)
-		r.Handle("/echo/:param", echoHandler)
-		r.Handle("/user-agent", userAgentHandler)
-		r.Handle("/files/:filename", fileHandler)
+
+		r.Handle(http.GET, "/", homeHandler)
+		r.Handle(http.GET, "/echo/:param", echoHandler)
+		r.Handle(http.GET, "/user-agent", userAgentHandler)
+		r.Handle(http.GET, "/files/:filename", fileHandler)
+		r.Handle(http.POST, "/files/:filename", fileHandlerPost)
 
 		l, err := net.Listen("tcp", "0.0.0.0:4221")
 		if err != nil {

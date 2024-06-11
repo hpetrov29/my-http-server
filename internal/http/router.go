@@ -3,81 +3,127 @@ package http
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
+	"strconv"
 	"strings"
 
 	"github.com/codecrafters-io/http-server-starter-go/internal/utils"
 )
 
+const (
+	GET = "GET"
+	POST = "POST"
+)
+
 type Handler func(ResponseWriter, Request)
 
 type Router struct {
-	routes map[string]Handler
+	routes map[string]map[string] Handler
 }
 
 func NewRouter() *Router {
-	return &Router{routes: make(map[string]Handler)}
+	return &Router{routes: make(map[string]map[string]Handler)}
 }
 
-func (r *Router) Handle(pattern string, h Handler) {
-	r.routes[pattern] = h
+func (r *Router) Handle(method string, pattern string, h Handler) {
+	if r.routes[pattern] == nil {
+		r.routes[pattern] = make(map[string]Handler)
+	}
+
+	r.routes[pattern][method] = h
 }
 
 func (r *Router) Serve(conn net.Conn) {
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
+
+	// -------------- Request line --------------
+	// POST /files/number HTTP/1.1
+	// \r\n
+
+	// -------------- Headers --------------
+	// Host: localhost:4221\r\n
+	// User-Agent: curl/7.64.1\r\n
+	// Accept: */*\r\n
+	// Content-Type: application/octet-stream  // Header that specifies the format of the request body
+	// Content-Length: 5\r\n                   // Header that specifies the size of the request body, in bytes
+	// \r\n
+
+	// -------------- Request Body --------------
+	// 12345
+
     requestLine, err := reader.ReadString('\n')
     if err != nil {
         fmt.Println("Error reading request: ", err.Error())
         return
     }
 
-	// requestLine format
-	// GET /echo/abc HTTP/1.1\r\nHost: localhost:4221\r\nUser-Agent: curl/7.64.1\r\nAccept: */*\r\n\r\n
 	parts := strings.Fields(requestLine)
 	if len(parts) < 3 {
 		conn.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
 		return
 	}
 
-	method := parts[0]
-	path := parts[1]
+	reqMethod := parts[0]
+	reqPath := parts[1]
 
-	// Only GET requests are allowed for now
-	if method != "GET" {
+	// Only GET and POST requests are allowed for now
+	if reqMethod != "GET" && reqMethod != "POST" {
         conn.Write([]byte("HTTP/1.1 405 Method Not Allowed\r\n\r\n"))
         return
     }
 
-    // Read and parse headers
-    headers := make(map[string]string)
+    // Read and parse request headers
+    reqHeaders := make(map[string]string)
     for {
-        line, err := reader.ReadString('\n')
+        headerLine, err := reader.ReadString('\n')
         if err != nil {
             fmt.Println("Error reading header line: ", err.Error())
             return
         }
 
-        line = strings.TrimSpace(line)
-        if line == "" {
+        headerLine = strings.TrimSpace(headerLine)
+        if headerLine == "" {
             break
         }
 
-        headerParts := strings.SplitN(line, ": ", 2)
+        headerParts := strings.SplitN(headerLine, ": ", 2)
         if len(headerParts) == 2 {
-            headers[headerParts[0]] = headerParts[1]
+            reqHeaders[headerParts[0]] = headerParts[1]
         }
     }
 
-	req := Request{Method: method, Path: path, Headers: headers }
+	// Read and parse request body
+	reqBody := []byte{}
+    if contentLengthStr, ok := reqHeaders["Content-Length"]; ok {
+        contentLength, err := strconv.Atoi(contentLengthStr)
+        if err != nil {
+            fmt.Println("Invalid Content-Length: ", err.Error())
+            return
+        }
+
+        reqBody = make([]byte, contentLength)
+        _, err = io.ReadFull(reader, reqBody)
+        if err != nil {
+            fmt.Println("Error reading body: ", err.Error())
+            return
+        }
+    }
+
+	req := Request{Method: reqMethod, Path: reqPath, Headers: reqHeaders, Body: reqBody}
 	res := NewResponseWriter(conn)
 
-	for pattern, handler := range r.routes {
-		if matches, params := utils.Match(pattern, path); matches {
-			req.Params = params
-			handler(res, req)
-			return
+	for route, methods := range r.routes {
+		if matches, params := utils.Match(route, reqPath); matches {
+			for method, handler := range methods {
+				if reqMethod == method {
+					req.Params = params	
+					handler(res, req)
+					return
+				}
+			}
 		}
 	}
 

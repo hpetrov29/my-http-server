@@ -5,4 +5,5 @@ type Request struct{
 	Path string
 	Params []string
 	Headers map[string]string
+	Body []byte
 }
